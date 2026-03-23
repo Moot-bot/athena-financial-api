@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Athena - Consulta Financeira</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        /* Header */
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+        
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        /* Cards */
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        
+        .card h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            border-left: 4px solid #667eea;
+            padding-left: 15px;
+        }
+        
+        /* Query Section */
+        .query-section {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .query-input {
+            flex: 1;
+            padding: 15px 20px;
+            font-size: 1rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            transition: all 0.3s;
+        }
+        
+        .query-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .btn {
+            padding: 15px 30px;
+            font-size: 1rem;
+            font-weight: 600;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+        
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+        
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+        
+        /* Response Section */
+        .response-box {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        
+        .answer {
+            font-size: 1.2rem;
+            color: #333;
+            margin-bottom: 15px;
+            line-height: 1.5;
+        }
+        
+        .source {
+            background: #e9ecef;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            color: #666;
+        }
+        
+        .source span {
+            font-weight: 600;
+            color: #667eea;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Grid para exemplos e métricas */
+        .examples-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .example-card {
+            background: #f8f9fa;
+            padding: 12px 15px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+        }
+        
+        .example-card:hover {
+            background: #e9ecef;
+            transform: translateX(5px);
+        }
+        
+        .metrics-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .metric-badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .metric-badge:hover {
+            transform: scale(1.05);
+        }
+        
+        .error {
+            color: #dc3545;
+            background: #ffe6e6;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+        
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-size: 1rem;
+            font-weight: 500;
+            color: #666;
+            transition: all 0.3s;
+        }
+        
+        .tab.active {
+            color: #667eea;
+            border-bottom: 2px solid #667eea;
+            margin-bottom: -2px;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .query-section {
+                flex-direction: column;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Athena</h1>
+            <p>Infraestrutura de Dados Financeiros</p>
+        </div>
+        
+        <div class="card">
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('query')">🔍 Consulta</button>
+                <button class="tab" onclick="switchTab('extract')">📄 Extrair PDF</button>
+                <button class="tab" onclick="switchTab('rag')">🧠 RAG + Grok</button>
+            </div>
+            
+            <!-- Tab 1: Consulta -->
+            <div id="tab-query" class="tab-content active">
+                <h2>Consulta em Linguagem Natural</h2>
+                <div class="query-section">
+                    <input type="text" id="question" class="query-input" 
+                           placeholder="Ex: Qual a receita líquida da Magazine Luiza no 1T22?"
+                           onkeypress="if(event.key==='Enter') submitQuery()">
+                    <button class="btn btn-primary" onclick="submitQuery()">Consultar</button>
+                </div>
+                
+                <div id="query-result"></div>
+                
+                <div class="loading" id="query-loading">
+                    <div class="spinner"></div>
+                    <p style="margin-top: 10px;">Consultando...</p>
+                </div>
+            </div>
+            
+            <!-- Tab 2: Extrair PDF -->
+            <div id="tab-extract" class="tab-content">
+                <h2>Extrair Dados do PDF</h2>
+                <p style="margin-bottom: 20px; color: #666;">
+                    Execute o pipeline de extração do PDF da Magazine Luiza (ITR 1T22) para o banco de dados.
+                </p>
+                <button class="btn btn-primary" onclick="runExtraction()">🚀 Executar Extração</button>
+                
+                <div id="extract-result"></div>
+                <div class="loading" id="extract-loading">
+                    <div class="spinner"></div>
+                    <p style="margin-top: 10px;">Extraindo dados do PDF...</p>
+                </div>
+            </div>
+            
+            <!-- Tab 3: RAG + Grok -->
+            <div id="tab-rag" class="tab-content">
+                <h2>RAG com Grok (Notas Explicativas)</h2>
+                <div class="query-section">
+                    <input type="text" id="rag-question" class="query-input" 
+                           placeholder="Ex: O que diz a Nota 19 sobre empréstimos?"
+                           onkeypress="if(event.key==='Enter') submitRAG()">
+                    <button class="btn btn-primary" onclick="submitRAG()">Consultar</button>
+                </div>
+                
+                <div id="rag-result"></div>
+                <div class="loading" id="rag-loading">
+                    <div class="spinner"></div>
+                    <p style="margin-top: 10px;">Consultando Grok...</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2>💡 Exemplos de Perguntas</h2>
+            <div class="examples-grid">
+                <div class="example-card" onclick="setQuestion('Qual a receita líquida da Magazine Luiza no 1T22?')">
+                    📈 Receita líquida no 1T22
+                </div>
+                <div class="example-card" onclick="setQuestion('Qual o lucro líquido da Magalu no primeiro trimestre de 2022?')">
+                    💰 Lucro líquido 1T22
+                </div>
+                <div class="example-card" onclick="setQuestion('Qual o valor da dívida da Magazine Luiza?')">
+                    🏦 Dívida total
+                </div>
+                <div class="example-card" onclick="setQuestion('Mostre o patrimônio líquido consolidado da Magalu')">
+                    📊 Patrimônio líquido
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2>📊 Métricas Disponíveis</h2>
+            <div class="metrics-list" id="metrics-list">
+                <span class="metric-badge" onclick="setQuestion('Qual a receita líquida da Magazine Luiza no 1T22?')">Receita líquida</span>
+                <span class="metric-badge" onclick="setQuestion('Qual o lucro bruto da Magalu no 1T22?')">Lucro bruto</span>
+                <span class="metric-badge" onclick="setQuestion('Qual o lucro líquido da Magalu no 1T22?')">Lucro líquido</span>
+                <span class="metric-badge" onclick="setQuestion('Qual o valor dos empréstimos da Magazine Luiza?')">Empréstimos</span>
+                <span class="metric-badge" onclick="setQuestion('Qual o patrimônio líquido consolidado da Magalu?')">Patrimônio líquido</span>
+                <span class="metric-badge" onclick="setQuestion('Qual o ativo total da Magazine Luiza?')">Ativo total</span>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const API_URL = window.location.origin;
+        
+        function switchTab(tabName) {
+            // Atualiza tabs
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+        }
+        
+        function setQuestion(question) {
+            document.getElementById('question').value = question;
+            document.getElementById('rag-question').value = question;
+        }
+        
+        async function submitQuery() {
+            const question = document.getElementById('question').value;
+            if (!question) {
+                alert('Digite uma pergunta');
+                return;
+            }
+            
+            const resultDiv = document.getElementById('query-result');
+            const loadingDiv = document.getElementById('query-loading');
+            
+            resultDiv.innerHTML = '';
+            loadingDiv.style.display = 'block';
+            
+            try {
+                const response = await fetch(`${API_URL}/query?question=${encodeURIComponent(question)}`);
+                const data = await response.json();
+                
+                loadingDiv.style.display = 'none';
+                
+                if (data.error) {
+                    resultDiv.innerHTML = `<div class="error">❌ ${data.error}</div>`;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="response-box">
+                            <div class="answer">📌 ${data.answer}</div>
+                            <div class="source">
+                                <span>📄 Fonte:</span> ${data.source.document} | 
+                                <span>📃 Página:</span> ${data.source.page || 'N/A'} | 
+                                <span>📝 Nota:</span> ${data.source.note || 'N/A'} |
+                                <span>🎯 Escopo:</span> ${data.source.scope}
+                            </div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                loadingDiv.style.display = 'none';
+                resultDiv.innerHTML = `<div class="error">❌ Erro: ${error.message}</div>`;
+            }
+        }
+        
+        async function runExtraction() {
+            const resultDiv = document.getElementById('extract-result');
+            const loadingDiv = document.getElementById('extract-loading');
+            
+            resultDiv.innerHTML = '';
+            loadingDiv.style.display = 'block';
+            
+            try {
+                const response = await fetch(`${API_URL}/extract`, { method: 'POST' });
+                const data = await response.json();
+                
+                loadingDiv.style.display = 'none';
+                
+                if (data.error) {
+                    resultDiv.innerHTML = `<div class="error">❌ ${data.error}</div>`;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="response-box">
+                            <h3 style="margin-bottom: 15px;">✅ Extração Concluída!</h3>
+                            <p><strong>📊 Tabelas encontradas:</strong> ${data.tables_found}</p>
+                            <p><strong>📈 Métricas extraídas:</strong> ${data.metrics_extracted}</p>
+                            <p><strong>💾 Métricas salvas:</strong> ${data.metrics_saved}</p>
+                            <p><strong>📝 Notas extraídas:</strong> ${data.notes_extracted || 0}</p>
+                            ${data.extracted_metrics ? `
+                                <details style="margin-top: 15px;">
+                                    <summary style="cursor: pointer; color: #667eea;">Ver métricas extraídas</summary>
+                                    <pre style="background: #f0f0f0; padding: 10px; border-radius: 8px; margin-top: 10px; overflow-x: auto;">${JSON.stringify(data.extracted_metrics, null, 2)}</pre>
+                                </details>
+                            ` : ''}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                loadingDiv.style.display = 'none';
+                resultDiv.innerHTML = `<div class="error">❌ Erro: ${error.message}</div>`;
+            }
+        }
+        
+        async function submitRAG() {
+            const question = document.getElementById('rag-question').value;
+            if (!question) {
+                alert('Digite uma pergunta');
+                return;
+            }
+            
+            const resultDiv = document.getElementById('rag-result');
+            const loadingDiv = document.getElementById('rag-loading');
+            
+            resultDiv.innerHTML = '';
+            loadingDiv.style.display = 'block';
+            
+            try {
+                const response = await fetch(`${API_URL}/rag?question=${encodeURIComponent(question)}`);
+                const data = await response.json();
+                
+                loadingDiv.style.display = 'none';
+                
+                if (data.error) {
+                    resultDiv.innerHTML = `<div class="error">❌ ${data.error}</div>`;
+                } else {
+                    let sourcesHtml = '';
+                    if (data.sources && data.sources.length > 0) {
+                        sourcesHtml = `
+                            <div class="source" style="margin-top: 10px;">
+                                <span>📚 Fontes:</span><br>
+                                ${data.sources.map(s => `Nota ${s.note} (pág. ${s.page || 'N/A'}) - similaridade: ${s.similarity}`).join('<br>')}
+                            </div>
+                        `;
+                    }
+                    
+                    resultDiv.innerHTML = `
+                        <div class="response-box">
+                            <div class="answer">🧠 ${data.answer}</div>
+                            ${sourcesHtml}
+                            <div class="source" style="margin-top: 10px;">
+                                <span>🤖 Modelo:</span> ${data.model || 'grok-beta'} | 
+                                <span>📋 Tipo:</span> ${data.type || 'rag'}
+                            </div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                loadingDiv.style.display = 'none';
+                resultDiv.innerHTML = `<div class="error">❌ Erro: ${error.message}</div>`;
+            }
+        }
+        
+        // Load metrics on page load
+        async function loadMetrics() {
+            try {
+                const response = await fetch(`${API_URL}/metrics/search?q=&limit=20`);
+                const data = await response.json();
+                if (Array.isArray(data) && data.length > 0) {
+                    const metricsList = document.getElementById('metrics-list');
+                    metricsList.innerHTML = data.map(m => 
+                        `<span class="metric-badge" onclick="setQuestion('Qual a ${m.display_name} da Magazine Luiza no 1T22?')">${m.display_name}</span>`
+                    ).join('');
+                }
+            } catch (error) {
+                console.log('Erro ao carregar métricas:', error);
+            }
+        }
+        
+        loadMetrics();
+    </script>
+</body>
+</html>
