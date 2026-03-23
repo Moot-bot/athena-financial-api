@@ -3,123 +3,138 @@ from datetime import date
 from app.database.connection import SessionLocal
 from app.models import Company, Document, Metric, Scope, FinancialFact
 
-def seed_data(session: Session):
-    """Insere dados iniciais baseados no ITR Magazine Luiza 1T22"""
+def ensure_magalu_company(db: Session) -> Company:
+    """Garante que a empresa Magazine Luiza existe"""
+    company = db.query(Company).filter(Company.name == "Magazine Luiza").first()
+    if not company:
+        company = Company(
+            name="Magazine Luiza",
+            ticker="MGLU3",
+            cnpj="47.960.950/0001-87"
+        )
+        db.add(company)
+        db.commit()
+        db.refresh(company)
+        print("✅ Empresa Magazine Luiza criada")
+    return company
+
+def ensure_basic_metrics(db: Session):
+    """Garante que as métricas básicas existem"""
+    metrics_data = [
+        ("Receita líquida de vendas", "Receita Líquida", "Receita", "DRE"),
+        ("Lucro bruto", "Lucro Bruto", "Resultado", "DRE"),
+        ("Lucro líquido do período", "Lucro Líquido", "Resultado", "DRE"),
+        ("Empréstimos e financiamentos", "Dívida Total", "Passivo", "BP"),
+        ("Patrimônio líquido", "Patrimônio Líquido", "PL", "BP"),
+        ("Ativo total", "Ativo Total", "Ativo", "BP"),
+        ("Ativo circulante", "Ativo Circulante", "Ativo", "BP"),
+        ("Disponibilidades", "Caixa e Equivalentes", "Ativo", "BP"),
+    ]
     
-    # Verifica se já existem dados
-    if session.query(Company).first():
+    for name, display_name, category, statement in metrics_data:
+        existing = db.query(Metric).filter(Metric.name == name).first()
+        if not existing:
+            metric = Metric(
+                name=name,
+                display_name=display_name,
+                category=category,
+                statement=statement
+            )
+            db.add(metric)
+    
+    db.commit()
+    print("✅ Métricas básicas criadas")
+
+def ensure_scopes(db: Session):
+    """Garante que os escopos existem"""
+    scopes = ["Consolidado", "Controladora"]
+    for scope_name in scopes:
+        existing = db.query(Scope).filter(Scope.name == scope_name).first()
+        if not existing:
+            scope = Scope(name=scope_name)
+            db.add(scope)
+    
+    db.commit()
+    print("✅ Escopos criados")
+
+def seed_data(db: Session):
+    """Insere dados iniciais de exemplo"""
+    
+    if db.query(FinancialFact).first():
         print("Dados já existem. Pulando seed.")
         return
     
     print("Inserindo dados iniciais...")
     
-    # 1. Empresa
-    magalu = Company(
-        name="Magazine Luiza",
-        ticker="MGLU3",
-        cnpj="47.960.950/0001-87"
-    )
-    session.add(magalu)
-    session.flush()
+    company = ensure_magalu_company(db)
+    ensure_scopes(db)
+    ensure_basic_metrics(db)
     
-    # 2. Documento
-    doc = Document(
-        company_id=magalu.id,
-        document_type="ITR",
-        fiscal_year=2022,
-        fiscal_quarter=1,
-        period_end=date(2022, 3, 31),
-        filing_date=date(2022, 5, 15),
-        file_reference="magalu_itr_1t22.pdf"
-    )
-    session.add(doc)
-    session.flush()
+    consolidado = db.query(Scope).filter(Scope.name == "Consolidado").first()
     
-    # 3. Escopos
-    consolidado = Scope(name="Consolidado", description="Valores consolidados do grupo")
-    controladora = Scope(name="Controladora", description="Apenas a empresa controladora")
-    session.add_all([consolidado, controladora])
-    session.flush()
+    doc = db.query(Document).filter(
+        Document.company_id == company.id,
+        Document.fiscal_year == 2022,
+        Document.fiscal_quarter == 1
+    ).first()
     
-    # 4. Métricas (com hierarquia)
-    metrics_data = [
-        # Receitas
-        ("Receita líquida de vendas", "Receita Líquida", "Receita", "DRE"),
-        ("Lucro bruto", "Lucro Bruto", "Resultado", "DRE"),
-        ("Lucro líquido do período", "Lucro Líquido", "Resultado", "DRE"),
-        
-        # Passivo
-        ("Empréstimos e financiamentos", "Dívida Total", "Passivo", "BP"),
-        ("Patrimônio líquido", "Patrimônio Líquido", "PL", "BP"),
-        
-        # Ativo
-        ("Ativo total", "Ativo Total", "Ativo", "BP"),
-        ("Ativo circulante", "Ativo Circulante", "Ativo", "BP"),
-        ("Disponibilidades", "Caixa e Equivalentes", "Ativo", "BP"),
-        
-        # Fluxo de Caixa
-        ("Fluxo de caixa operacional", "FCO", "Fluxo", "DFC"),
-        ("Fluxo de caixa de investimento", "FCI", "Fluxo", "DFC"),
-        ("Fluxo de caixa de financiamento", "FCF", "Fluxo", "DFC"),
-    ]
-    
-    metrics = {}
-    for name, display_name, category, statement in metrics_data:
-        metric = Metric(
-            name=name,
-            display_name=display_name,
-            category=category,
-            statement=statement
+    if not doc:
+        doc = Document(
+            company_id=company.id,
+            document_type="ITR",
+            fiscal_year=2022,
+            fiscal_quarter=1,
+            period_end=date(2022, 3, 31),
+            file_reference="magazine_luiza_itr_1t22.pdf"
         )
-        session.add(metric)
-        metrics[name] = metric
+        db.add(doc)
+        db.flush()
     
-    session.flush()
+    metrics = {m.name: m for m in db.query(Metric).all()}
     
-    # 5. Fatos financeiros
     facts_data = [
-        # DRE - página 7
-        (magalu.id, doc.id, metrics["Receita líquida de vendas"].id, consolidado.id, 8762176, 7, "24"),
-        (magalu.id, doc.id, metrics["Lucro bruto"].id, consolidado.id, 2870000, 7, "24"),
-        (magalu.id, doc.id, metrics["Lucro líquido do período"].id, consolidado.id, 118000, 7, "24"),
-        
-        # BP - páginas 5-6
-        (magalu.id, doc.id, metrics["Empréstimos e financiamentos"].id, consolidado.id, 4022000, 30, "19"),
-        (magalu.id, doc.id, metrics["Patrimônio líquido"].id, consolidado.id, 5000000, 6, "19"),
-        (magalu.id, doc.id, metrics["Ativo total"].id, consolidado.id, 39250000, 5, None),
-        (magalu.id, doc.id, metrics["Ativo circulante"].id, consolidado.id, 21800000, 5, None),
-        (magalu.id, doc.id, metrics["Disponibilidades"].id, consolidado.id, 4250000, 5, "5"),
-        
-        # DFC - página 10
-        (magalu.id, doc.id, metrics["Fluxo de caixa operacional"].id, consolidado.id, 1250000, 10, None),
-        (magalu.id, doc.id, metrics["Fluxo de caixa de investimento"].id, consolidado.id, -980000, 10, None),
-        (magalu.id, doc.id, metrics["Fluxo de caixa de financiamento"].id, consolidado.id, -210000, 10, None),
+        (metrics.get("Receita líquida de vendas"), 8762176, 7, "24"),
+        (metrics.get("Lucro bruto"), 2870000, 7, "24"),
+        (metrics.get("Lucro líquido do período"), 118000, 7, "24"),
+        (metrics.get("Empréstimos e financiamentos"), 4022000, 30, "19"),
+        (metrics.get("Patrimônio líquido"), 5000000, 6, "19"),
+        (metrics.get("Ativo total"), 39250000, 5, None),
+        (metrics.get("Ativo circulante"), 21800000, 5, None),
+        (metrics.get("Disponibilidades"), 4250000, 5, "5"),
     ]
     
-    for fact_data in facts_data:
-        fact = FinancialFact(
-            company_id=fact_data[0],
-            document_id=fact_data[1],
-            metric_id=fact_data[2],
-            scope_id=fact_data[3],
-            value=fact_data[4],
-            page=fact_data[5],
-            note_reference=fact_data[6]
-        )
-        session.add(fact)
+    saved = 0
+    for metric, value, page, note in facts_data:
+        if metric:
+            existing = db.query(FinancialFact).filter(
+                FinancialFact.company_id == company.id,
+                FinancialFact.document_id == doc.id,
+                FinancialFact.metric_id == metric.id,
+                FinancialFact.scope_id == consolidado.id
+            ).first()
+            
+            if not existing:
+                fact = FinancialFact(
+                    company_id=company.id,
+                    document_id=doc.id,
+                    metric_id=metric.id,
+                    scope_id=consolidado.id,
+                    value=value,
+                    page=page,
+                    note_reference=note
+                )
+                db.add(fact)
+                saved += 1
     
-    session.commit()
-    print(f"Seed concluído: {len(metrics)} métricas, {len(facts_data)} fatos inseridos.")
-
+    db.commit()
+    print(f"✅ Seed concluído: {saved} fatos inseridos")
 
 def run_seed():
-    """Função principal para executar o seed"""
     db = SessionLocal()
     try:
         seed_data(db)
     finally:
         db.close()
-
 
 if __name__ == "__main__":
     run_seed()
